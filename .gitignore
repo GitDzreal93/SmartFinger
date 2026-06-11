@@ -1,4 +1,5 @@
 .pio/
+.superpowers/
 demo/mvp/.pio/
 demo/mvp_v2_mos/.pio/
 firmware/.pio/

@@ -9,8 +9,20 @@ struct ClickProfile {
   uint8_t rate;
 };
 
+enum class AdaptiveStep : uint8_t {
+  Idle,
+  Calculate,
+  Press,
+  Release,
+  Complete,
+};
+
 struct DisplaySnapshot {
   uint8_t grade;
   ClickProfile profile;
+  bool running;
+  bool adaptiveMode;
+  bool armed;
+  unsigned long remainingMs;
+  AdaptiveStep adaptiveStep;
 };
-
