@@ -29,6 +29,8 @@ python3 -m http.server 4173 -d desktop-control
 http://localhost:4173
 ```
 
+也可以直接双击 `launcher/SmartFinger.app`。它会自动启动本地服务并打开控制页，适合不想碰命令行的使用场景。
+
 ## 浏览器要求
 
 推荐：

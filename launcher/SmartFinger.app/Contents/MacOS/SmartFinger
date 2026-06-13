@@ -1,0 +1,99 @@
+#!/bin/bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bundle_dir="$(cd "$script_dir/.." && pwd)"
+desktop_dir="$bundle_dir/Resources/desktop-control"
+port="${SMARTFINGER_PORT:-4173}"
+server_url="http://127.0.0.1:${port}"
+log_dir="$HOME/Library/Logs/SmartFinger"
+log_file="$log_dir/launcher.log"
+agent_dir="$HOME/Library/LaunchAgents"
+agent_label="com.smartfinger.desktop-control.${port}"
+agent_plist="$agent_dir/${agent_label}.plist"
+serve_script="$bundle_dir/Resources/serve-desktop-control.sh"
+
+mkdir -p "$log_dir"
+mkdir -p "$agent_dir"
+
+if [[ ! -d "$desktop_dir" ]]; then
+  osascript -e 'display dialog "找不到 SmartFinger 控制页目录。请把这个应用和项目文件夹放在一起。" buttons {"好"} default button "好"' >/dev/null 2>&1 || true
+  exit 1
+fi
+
+if [[ ! -x "$serve_script" ]]; then
+  osascript -e 'display dialog "启动器缺少服务脚本，请重新安装 SmartFinger。" buttons {"好"} default button "好"' >/dev/null 2>&1 || true
+  exit 1
+fi
+
+if ! lsof -tiTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+  cat >"$agent_plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${agent_label}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${serve_script}</string>
+    <string>${port}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>WorkingDirectory</key>
+  <string>${desktop_dir}</string>
+  <key>StandardOutPath</key>
+  <string>${log_file}</string>
+  <key>StandardErrorPath</key>
+  <string>${log_file}</string>
+</dict>
+</plist>
+EOF
+
+  launchctl bootstrap "gui/$(id -u)" "$agent_plist" >>"$log_file" 2>&1 || true
+  launchctl kickstart -k "gui/$(id -u)/$agent_label" >>"$log_file" 2>&1 || true
+
+  for _ in $(seq 1 50); do
+    if curl -fsS "$server_url" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.2
+  done
+
+  if ! curl -fsS "$server_url" >/dev/null 2>&1; then
+    if command -v setsid >/dev/null 2>&1; then
+      setsid python3 -m http.server "$port" -d "$desktop_dir" >>"$log_file" 2>&1 </dev/null &
+      for _ in $(seq 1 50); do
+        if curl -fsS "$server_url" >/dev/null 2>&1; then
+          break
+        fi
+        sleep 0.2
+      done
+    fi
+  fi
+
+  if ! curl -fsS "$server_url" >/dev/null 2>&1; then
+    osascript -e 'display dialog "SmartFinger 控制页启动失败，请查看日志。" buttons {"好"} default button "好"' >/dev/null 2>&1 || true
+    exit 1
+  fi
+fi
+
+if [[ "${SMARTFINGER_LAUNCHER_NO_BROWSER:-0}" != "1" ]]; then
+  browser="${SMARTFINGER_LAUNCHER_BROWSER:-}"
+  if [[ -z "$browser" ]]; then
+    if [[ -d "/Applications/Microsoft Edge.app" ]]; then
+      browser="Microsoft Edge"
+    elif [[ -d "/Applications/Google Chrome.app" ]]; then
+      browser="Google Chrome"
+    fi
+  fi
+
+  if [[ -n "$browser" ]]; then
+    open -a "$browser" "$server_url"
+  else
+    open "$server_url"
+  fi
+fi

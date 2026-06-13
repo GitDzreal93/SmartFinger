@@ -110,6 +110,12 @@ IN 3.5
 desktop-control/
 ```
 
+一键启动器目录：
+
+```text
+launcher/SmartFinger.app
+```
+
 启动方式：
 
 ```bash
@@ -121,6 +127,8 @@ python3 -m http.server 4173 -d desktop-control
 ```text
 http://localhost:4173
 ```
+
+也可以直接双击 `launcher/SmartFinger.app`。
 
 控制页支持：
 

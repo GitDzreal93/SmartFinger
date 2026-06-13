@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartFinger Control</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SmartFinger Control</p>
+          <h1>点击控制台</h1>
+        </div>
+        <div class="top-status">
+          <span id="computer-clock">电脑时间 --:--:--</span>
+          <span id="device-status" class="status-dot">设备未连接</span>
+        </div>
+      </header>
+
+      <section class="connection-step" id="connection-step">
+        <div class="step-number">1</div>
+        <div class="step-copy">
+          <h2>连接设备</h2>
+          <p>选择 ESP32-C3 的 USB 串口。连接成功并收到设备状态后，才能进入执行配置。</p>
+        </div>
+        <div class="connection-actions">
+          <button class="button primary" id="connect-button">选择并连接串口</button>
+          <button class="button quiet" id="disconnect-button" disabled>断开串口</button>
+        </div>
+        <div class="connection-health" id="connection-health">等待连接</div>
+      </section>
+
+      <section class="workspace is-locked" id="workspace">
+        <div class="mode-switch" role="tablist" aria-label="执行方式">
+          <button class="mode-button is-active" data-mode="immediate" role="tab">
+            <span class="mode-index">2A</span>
+            <span>
+              <strong>立即执行</strong>
+              <small>选择 1-5 档，持续循环点击，手动停止</small>
+            </span>
+          </button>
+          <button class="mode-button" data-mode="scheduled" role="tab">
+            <span class="mode-index">2B</span>
+            <span>
+              <strong>定时执行</strong>
+              <small>倒计时抢票模式，到点自动执行 5 秒</small>
+            </span>
+          </button>
+        </div>
+
+        <section class="mode-panel" id="immediate-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">立即执行</p>
+              <h2>选择循环点击频率</h2>
+            </div>
+            <span class="mode-state" id="immediate-state">未运行</span>
+          </div>
+
+          <div class="grade-list" id="grade-list">
+            <button class="grade-card" data-grade="1"><strong>1 档</strong><span>约 3 次/秒</span></button>
+            <button class="grade-card" data-grade="2"><strong>2 档</strong><span>约 4 次/秒</span></button>
+            <button class="grade-card is-selected" data-grade="3"><strong>3 档</strong><span>约 5 次/秒</span></button>
+            <button class="grade-card" data-grade="4"><strong>4 档</strong><span>约 7 次/秒</span></button>
+            <button class="grade-card" data-grade="5"><strong>5 档</strong><span>约 10 次/秒</span></button>
+          </div>
+
+          <details class="advanced">
+            <summary>自定义固定频率</summary>
+            <div class="field-grid">
+              <label><span>按下时长 Tap (ms)</span><input id="tap-ms-input" type="number" min="1" value="45"></label>
+              <label><span>松开时长 Rest (ms)</span><input id="rest-ms-input" type="number" min="1" value="155"></label>
+            </div>
+            <div class="action-row">
+              <button class="button quiet" id="apply-profile-button">应用自定义频率</button>
+              <button class="button quiet" id="clear-profile-button">恢复档位预设</button>
+            </div>
+          </details>
+
+          <div class="primary-actions">
+            <button class="button start" id="immediate-start-button">开始循环点击</button>
+            <button class="button stop" id="immediate-stop-button">停止点击</button>
+          </div>
+        </section>
+
+        <section class="mode-panel is-hidden" id="scheduled-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">定时执行</p>
+              <h2>设置抢票模式启动时间</h2>
+            </div>
+            <span class="mode-state" id="scheduled-state">未武装</span>
+          </div>
+
+          <div class="schedule-explainer">
+            到点后自动运行 5 秒高仿真点击。电脑时间会在武装前自动同步到设备。
+          </div>
+
+          <div class="schedule-choice">
+            <article class="schedule-card">
+              <h3>几秒后开始</h3>
+              <p>适合快速测试和短时间准备。</p>
+              <label><span>倒计时秒数</span><input id="delay-seconds-input" type="number" min="0.1" step="0.1" value="5"></label>
+              <button class="button primary" id="countdown-arm-button">武装倒计时</button>
+            </article>
+            <article class="schedule-card">
+              <h3>指定时刻开始</h3>
+              <p>适合对齐电脑上的目标时间。</p>
+              <label><span>目标时刻</span><input id="target-time-input" type="time" step="1"></label>
+              <button class="button primary" id="absolute-arm-button">按时刻武装</button>
+            </article>
+          </div>
+
+          <div class="countdown-display">
+            <span>设备倒计时</span>
+            <strong id="countdown-value">--.-s</strong>
+            <span id="schedule-step">WAIT</span>
+          </div>
+
+          <div class="primary-actions">
+            <button class="button stop" id="cancel-schedule-button">取消定时并停止</button>
+          </div>
+        </section>
+
+        <section class="monitor-panel">
+          <div class="monitor-summary">
+            <div><span>模式</span><strong id="state-mode">STOP</strong></div>
+            <div><span>设备档位</span><strong id="state-grade">0</strong></div>
+            <div><span>立即执行档位</span><strong id="selected-grade">3</strong></div>
+            <div><span>最近 CPS</span><strong id="last-cps">--</strong></div>
+          </div>
+          <details class="logs">
+            <summary>查看通信日志</summary>
+            <div class="log-actions">
+              <button class="button quiet small" id="refresh-status-button">刷新状态</button>
+              <button class="button quiet small" id="clear-log-button">清空日志</button>
+            </div>
+            <pre id="log-output"></pre>
+          </details>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
