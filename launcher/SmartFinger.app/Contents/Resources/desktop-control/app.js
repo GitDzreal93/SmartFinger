@@ -2,7 +2,10 @@ import {
   buildImmediateStartCommands,
   buildScheduledStartCommands,
   choosePreferredSerialPort,
+  formatDateTimeForInput,
+  formatDuration,
   formatTimeForCommand,
+  normalizeDateTimeLocalToSecond,
   parseStateLine,
 } from "./control-model.mjs";
 
@@ -30,7 +33,7 @@ const ui = {
   applyProfileButton: $("#apply-profile-button"),
   clearProfileButton: $("#clear-profile-button"),
   delaySecondsInput: $("#delay-seconds-input"),
-  targetTimeInput: $("#target-time-input"),
+  targetDateTimeInput: $("#target-datetime-input"),
   countdownArmButton: $("#countdown-arm-button"),
   absoluteArmButton: $("#absolute-arm-button"),
   cancelScheduleButton: $("#cancel-schedule-button"),
@@ -56,6 +59,11 @@ const state = {
   selectedGrade: 3,
   statusTimer: null,
   readTask: null,
+  deviceMode: "STOP",
+  deviceGrade: "0",
+  deviceLeftMs: 0,
+  deviceStep: "WAIT",
+  scheduleTargetAtMs: null,
 };
 
 function log(message, kind = "info") {
@@ -79,6 +87,39 @@ function renderConnection() {
       : "等待连接";
 }
 
+function formatTargetDateTime(timestampMs) {
+  if (!timestampMs) return "--";
+  const date = new Date(timestampMs);
+  return [
+    `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`,
+    `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
+  ].join(" ");
+}
+
+function renderScheduleCountdown(nowMs = Date.now()) {
+  if (state.deviceMode === "ARMED" && state.scheduleTargetAtMs) {
+    const leftMs = Math.max(0, state.scheduleTargetAtMs - nowMs);
+    ui.countdownValue.textContent = `还有 ${formatDuration(leftMs)}`;
+    ui.scheduleStep.textContent = `目标 ${formatTargetDateTime(state.scheduleTargetAtMs)}`;
+    return;
+  }
+
+  if (state.deviceMode === "RUN" && state.deviceGrade === "6") {
+    ui.countdownValue.textContent = `剩余 ${formatDuration(state.deviceLeftMs)}`;
+    ui.scheduleStep.textContent = state.deviceStep;
+    return;
+  }
+
+  if (state.deviceMode === "DONE") {
+    ui.countdownValue.textContent = "0 秒";
+    ui.scheduleStep.textContent = "DONE";
+    return;
+  }
+
+  ui.countdownValue.textContent = "--";
+  ui.scheduleStep.textContent = "WAIT";
+}
+
 function renderDeviceState(device) {
   state.deviceResponsive = true;
   renderConnection();
@@ -88,6 +129,16 @@ function renderDeviceState(device) {
   const grade = device.grade ?? "0";
   const selectedGrade = Number(device.selected_grade ?? state.selectedGrade);
   state.selectedGrade = selectedGrade;
+  state.deviceMode = mode;
+  state.deviceGrade = grade;
+  state.deviceLeftMs = leftMs;
+  state.deviceStep = device.step ?? "WAIT";
+
+  if (mode === "ARMED" && leftMs > 0) {
+    state.scheduleTargetAtMs = Date.now() + leftMs;
+  } else if (mode !== "RUN") {
+    state.scheduleTargetAtMs = null;
+  }
 
   ui.stateMode.textContent = mode;
   ui.stateGrade.textContent = grade;
@@ -97,8 +148,7 @@ function renderDeviceState(device) {
     ? `${grade} 档运行中`
     : "未运行";
   ui.scheduledState.textContent = mode === "ARMED" ? "已武装" : mode === "RUN" && grade === "6" ? "执行中" : mode === "DONE" ? "已完成" : "未武装";
-  ui.countdownValue.textContent = `${(leftMs / 1000).toFixed(1)}s`;
-  ui.scheduleStep.textContent = device.step ?? "WAIT";
+  renderScheduleCountdown();
 
   ui.gradeCards.forEach((card) => {
     card.classList.toggle("is-selected", Number(card.dataset.grade) === selectedGrade);
@@ -202,6 +252,49 @@ async function connectWithCleanup() {
   }
 }
 
+function parseTargetDateTime() {
+  let normalized = "";
+  try {
+    normalized = normalizeDateTimeLocalToSecond(ui.targetDateTimeInput.value);
+  } catch {
+    throw new Error("请填写完整的目标日期时间");
+  }
+  const targetDate = new Date(normalized);
+  if (Number.isNaN(targetDate.getTime())) {
+    throw new Error("目标日期时间格式不正确");
+  }
+  return targetDate;
+}
+
+async function armCountdownSchedule() {
+  const seconds = Number(ui.delaySecondsInput.value);
+  const startedAt = Date.now();
+  await sendSequence(buildScheduledStartCommands({
+    computerTime: formatTimeForCommand(new Date(startedAt)),
+    type: "countdown",
+    value: seconds,
+  }));
+  state.scheduleTargetAtMs = startedAt + seconds * 1000;
+  renderScheduleCountdown();
+}
+
+async function armAbsoluteSchedule() {
+  const targetDate = parseTargetDateTime();
+  const now = new Date();
+  const delaySeconds = (targetDate.getTime() - now.getTime()) / 1000;
+  if (delaySeconds <= 0) {
+    throw new Error("目标日期时间必须晚于当前电脑时间");
+  }
+
+  await sendSequence(buildScheduledStartCommands({
+    computerTime: formatTimeForCommand(now),
+    type: "absolute",
+    value: delaySeconds.toFixed(3),
+  }));
+  state.scheduleTargetAtMs = targetDate.getTime();
+  renderScheduleCountdown();
+}
+
 function selectMode(mode) {
   const immediate = mode === "immediate";
   ui.immediatePanel.classList.toggle("is-hidden", !immediate);
@@ -227,22 +320,13 @@ function bindEvents() {
   ui.applyProfileButton.addEventListener("click", () => send(`PROFILE ${Number(ui.tapMsInput.value)} ${Number(ui.restMsInput.value)}`).catch((error) => log(`设置频率失败：${error.message}`)));
   ui.clearProfileButton.addEventListener("click", () => send("PROFILE CLEAR").catch((error) => log(`恢复预设失败：${error.message}`)));
 
-  ui.countdownArmButton.addEventListener("click", () => sendSequence(buildScheduledStartCommands({
-    computerTime: formatTimeForCommand(new Date()),
-    type: "countdown",
-    value: ui.delaySecondsInput.value,
-  })).catch((error) => log(`武装失败：${error.message}`)));
+  ui.countdownArmButton.addEventListener("click", () => armCountdownSchedule().catch((error) => log(`武装失败：${error.message}`)));
+  ui.absoluteArmButton.addEventListener("click", () => armAbsoluteSchedule().catch((error) => log(`武装失败：${error.message}`)));
 
-  ui.absoluteArmButton.addEventListener("click", () => {
-    const value = ui.targetTimeInput.value.length === 5 ? `${ui.targetTimeInput.value}:00` : ui.targetTimeInput.value;
-    return sendSequence(buildScheduledStartCommands({
-      computerTime: formatTimeForCommand(new Date()),
-      type: "absolute",
-      value,
-    })).catch((error) => log(`武装失败：${error.message}`));
-  });
-
-  ui.cancelScheduleButton.addEventListener("click", () => sendSequence(["CANCEL", "STOP"]).catch((error) => log(`取消失败：${error.message}`)));
+  ui.cancelScheduleButton.addEventListener("click", () => sendSequence(["CANCEL", "STOP"]).then(() => {
+    state.scheduleTargetAtMs = null;
+    renderScheduleCountdown();
+  }).catch((error) => log(`取消失败：${error.message}`)));
   ui.refreshStatusButton.addEventListener("click", () => send("STATUS").catch((error) => log(`刷新失败：${error.message}`)));
   ui.clearLogButton.addEventListener("click", () => { ui.logOutput.textContent = ""; });
 
@@ -258,9 +342,10 @@ function bindEvents() {
 function init() {
   renderConnection();
   bindEvents();
-  ui.targetTimeInput.value = formatTimeForCommand(new Date(Date.now() + 60_000));
+  ui.targetDateTimeInput.value = formatDateTimeForInput(new Date(Date.now() + 60_000));
   window.setInterval(() => {
     ui.computerClock.textContent = `电脑时间 ${formatTimeForCommand(new Date())}`;
+    renderScheduleCountdown();
   }, 250);
 }
 

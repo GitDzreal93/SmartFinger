@@ -106,16 +106,16 @@
               <button class="button primary" id="countdown-arm-button">武装倒计时</button>
             </article>
             <article class="schedule-card">
-              <h3>指定时刻开始</h3>
-              <p>适合对齐电脑上的目标时间。</p>
-              <label><span>目标时刻</span><input id="target-time-input" type="time" step="1"></label>
-              <button class="button primary" id="absolute-arm-button">按时刻武装</button>
+              <h3>指定日期时间开始</h3>
+              <p>适合跨天抢票。默认按整分钟配置，秒数固定为 00。</p>
+              <label><span>目标日期时间</span><input id="target-datetime-input" type="datetime-local" step="60"></label>
+              <button class="button primary" id="absolute-arm-button">按日期时间武装</button>
             </article>
           </div>
 
           <div class="countdown-display">
             <span>设备倒计时</span>
-            <strong id="countdown-value">--.-s</strong>
+            <strong id="countdown-value">--</strong>
             <span id="schedule-step">WAIT</span>
           </div>
 

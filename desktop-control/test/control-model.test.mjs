@@ -4,7 +4,10 @@ import {
   buildImmediateStartCommands,
   buildScheduledStartCommands,
   choosePreferredSerialPort,
+  formatDateTimeForInput,
+  formatDuration,
   formatTimeForCommand,
+  normalizeDateTimeLocalToSecond,
   parseStateLine,
 } from "../control-model.mjs";
 
@@ -40,10 +43,16 @@ assert.deepEqual(
   buildScheduledStartCommands({
     computerTime: "22:30:00",
     type: "absolute",
-    value: "22:31:15",
+    value: "45",
   }),
-  ["TIME 22:30:00", "AT 22:31:15"],
+  ["TIME 22:30:00", "IN 45"],
 );
+
+assert.equal(normalizeDateTimeLocalToSecond("2026-06-15T13:38"), "2026-06-15T13:38:00");
+assert.equal(formatDateTimeForInput(new Date(2026, 5, 15, 13, 38, 45)), "2026-06-15T13:38");
+assert.equal(formatDuration(0), "0 秒");
+assert.equal(formatDuration(65_000), "1 分 5 秒");
+assert.equal(formatDuration(90_061_000), "1 天 1 小时 1 分 1 秒");
 
 const bluetoothPort = { getInfo: () => ({}) };
 const esp32Port = { getInfo: () => ({ usbVendorId: 0x303a, usbProductId: 0x1001 }) };
