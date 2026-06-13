@@ -3,40 +3,65 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>SmartFinger 点击测试</title>
+    <title>初步举证 · 抢票练习</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <main class="test-shell">
-      <header class="test-header">
-        <div>
-          <p class="eyebrow">SmartFinger Touch Test</p>
-          <h1>手机点击间隔测试</h1>
-          <p class="description">把 SmartFinger 对准下方区域，页面会记录每次点击之间的实际间隔。</p>
-        </div>
-        <a class="back-link" href="../">返回控制台</a>
-      </header>
-
-      <button id="touch-pad" class="touch-pad" type="button">
-        <span id="pad-value">等待点击</span>
-        <small id="pad-hint">首次点击后开始计算间隔</small>
-      </button>
-
-      <section class="stats-panel" aria-live="polite">
-        <div class="stats-heading">
-          <h2>实时统计</h2>
-          <button id="reset-button" class="reset-button" type="button">清空数据</button>
-        </div>
-        <div class="stats-grid">
-          <div><span>最近一次</span><strong id="last-interval">--</strong></div>
-          <div><span>点击次数</span><strong id="click-count">0</strong></div>
-          <div><span>平均间隔</span><strong id="average-interval">--</strong></div>
-          <div><span>最快间隔</span><strong id="minimum-interval">--</strong></div>
-          <div><span>最慢间隔</span><strong id="maximum-interval">--</strong></div>
-          <div><span>标准差（抖动）</span><strong id="standard-deviation">--</strong></div>
+    <main class="event-page">
+      <section class="hero">
+        <div class="status-bar"><strong>23:30</strong><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;84</span></div>
+        <div class="hero-nav"><a href="../" aria-label="返回控制台">‹</a><button type="button" aria-label="分享">↗</button></div>
+        <div class="event-summary">
+          <div class="poster" aria-hidden="true"><span>初步</span><strong>举证</strong></div>
+          <div>
+            <h1><em>总票代</em> 陈昊宇主演话剧《初步举证》</h1>
+            <p class="event-date">2026.08.14 - 08.16 19:30</p>
+            <p class="event-duration">约120分钟（以现场为准）</p>
+          </div>
         </div>
       </section>
+
+      <section class="ticket-sheet">
+        <h2>¥180-880</h2>
+        <div class="city-tabs">
+          <button class="selected">深圳站<small>08.14-08.16</small></button>
+          <button>上海站<small>07.09-07.19</small></button>
+          <button>南京站<small>07.24/07.25</small></button>
+        </div>
+        <div class="venue-row">
+          <div><strong>南山文体中心聚橙剧院</strong><span>深圳 南山大道南头街62号｜25个演出</span></div>
+          <span class="distance">●<small>3.0km</small></span>
+        </div>
+        <div class="benefits"><span class="warning">● 不支持退</span><span>● 官方票</span><span>● 可选座</span><span>● 电子票</span></div>
+      </section>
+
+      <section class="guide-card">
+        <div><h2>抢票攻<span>略</span></h2><p>预填信息，抢票快人一步</p></div>
+        <button type="button">去填写</button>
+      </section>
+
+      <section class="artist-card">
+        <div class="avatar">陈</div>
+        <div><h2>陈昊宇</h2><p><strong>476.0万</strong> 全网粉丝｜5场 在售演出</p></div>
+        <button type="button">＋关注</button>
+      </section>
+
+      <section class="details">
+        <h2>演出详情</h2>
+        <h3>购票须知：</h3>
+        <p>*本轮演出实行实名制购票，并采用“一证一票”规则。每位购票人凭本人有效身份证件每场限购一张演出票。</p>
+        <p>*本项目演出时间及现场安排以实际为准，请勿相信非官方渠道。</p>
+      </section>
     </main>
+
+    <button id="reset-practice" class="reset-practice" type="button">重新练习</button>
+    <footer class="purchase-dock">
+      <div class="watch"><span>♡</span><small>想看</small></div>
+      <div class="purchase-main">
+        <div class="countdown"><span>距开抢</span><strong id="countdown-value">00:10.0</strong></div>
+        <button id="reserved-button" type="button">已预约<small id="button-hint">点击查看预约票档</small></button>
+      </div>
+    </footer>
 
     <script type="module" src="./app.js"></script>
   </body>

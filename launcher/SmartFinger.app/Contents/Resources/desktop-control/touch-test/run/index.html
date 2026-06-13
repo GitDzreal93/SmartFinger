@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>SmartFinger 抢票落点测试</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="run-page">
+      <header class="run-header">
+        <a class="back-link" href="../">‹ 返回重新练习</a>
+        <span class="live-badge">抢票测试中</span>
+        <h1>对准右下方红色按钮</h1>
+        <p>只有命中真实抢票按钮位置才会记录，用来练习电容头移动速度与落点准确度。</p>
+      </header>
+
+      <section class="stats-panel" aria-live="polite">
+        <div class="stats-heading">
+          <div>
+            <span>最近一次间隔</span>
+            <strong id="last-interval">--</strong>
+          </div>
+          <button id="reset-button" class="reset-button" type="button">清空数据</button>
+        </div>
+        <div class="stats-grid">
+          <div><span>点击次数</span><strong id="click-count">0</strong></div>
+          <div><span>平均间隔</span><strong id="average-interval">--</strong></div>
+          <div><span>最快间隔</span><strong id="minimum-interval">--</strong></div>
+          <div><span>最慢间隔</span><strong id="maximum-interval">--</strong></div>
+          <div class="wide"><span>标准差（抖动）</span><strong id="standard-deviation">--</strong></div>
+        </div>
+      </section>
+
+      <section class="practice-stage">
+        <div class="target-guide">
+          <span>目标区域</span>
+          <strong>右下方红色按钮</strong>
+          <small>页面其他位置不会计数</small>
+        </div>
+      </section>
+    </main>
+
+    <footer class="purchase-dock">
+      <div class="watch"><span>♡</span><small>想看</small></div>
+      <button id="touch-pad" class="purchase-button" type="button">
+        <span id="pad-value">立即抢票</span>
+        <small id="pad-hint">等待电容头点击</small>
+      </button>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

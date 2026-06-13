@@ -1,52 +1,45 @@
-import { createTouchTestState, recordTouch, resetTouchTest } from "./touch-test-model.mjs";
+import {
+  PRACTICE_DURATION_MS,
+  TARGET_STORAGE_KEY,
+  practiceDestination,
+  remainingMs,
+  resolvePracticeTarget,
+} from "./practice-model.mjs";
 
-const touchPad = document.querySelector("#touch-pad");
-const resetButton = document.querySelector("#reset-button");
-const padValue = document.querySelector("#pad-value");
-const padHint = document.querySelector("#pad-hint");
-const fields = {
-  lastInterval: document.querySelector("#last-interval"),
-  clickCount: document.querySelector("#click-count"),
-  average: document.querySelector("#average-interval"),
-  minimum: document.querySelector("#minimum-interval"),
-  maximum: document.querySelector("#maximum-interval"),
-  standardDeviation: document.querySelector("#standard-deviation"),
-};
+const countdownValue = document.querySelector("#countdown-value");
+const buttonHint = document.querySelector("#button-hint");
+const reservedButton = document.querySelector("#reserved-button");
+const resetButton = document.querySelector("#reset-practice");
 
-let state = createTouchTestState();
+let targetMs = resolvePracticeTarget(sessionStorage.getItem(TARGET_STORAGE_KEY), Date.now());
+sessionStorage.setItem(TARGET_STORAGE_KEY, String(targetMs));
 
-function formatInterval(value) {
-  return value === null ? "--" : `${value.toFixed(2)} ms`;
+function currentRemainingMs() {
+  return remainingMs(targetMs, Date.now());
+}
+
+function formatCountdown(leftMs) {
+  const seconds = Math.floor(leftMs / 1000);
+  const tenths = Math.floor((leftMs % 1000) / 100);
+  return `00:${String(seconds).padStart(2, "0")}.${tenths}`;
 }
 
 function render() {
-  fields.lastInterval.textContent = formatInterval(state.lastInterval);
-  fields.clickCount.textContent = String(state.clickCount);
-  fields.average.textContent = formatInterval(state.average);
-  fields.minimum.textContent = formatInterval(state.minimum);
-  fields.maximum.textContent = formatInterval(state.maximum);
-  fields.standardDeviation.textContent = formatInterval(state.standardDeviation);
-
-  if (state.lastInterval === null) {
-    padValue.textContent = state.clickCount === 0 ? "等待点击" : "已记录首次点击";
-    padHint.textContent = state.clickCount === 0 ? "首次点击后开始计算间隔" : "再次点击即可得到第一个间隔";
-    return;
-  }
-
-  padValue.textContent = formatInterval(state.lastInterval);
-  padHint.textContent = `已记录 ${state.clickCount} 次点击`;
+  const leftMs = currentRemainingMs();
+  countdownValue.textContent = formatCountdown(leftMs);
+  buttonHint.textContent = leftMs <= 3_000 ? "点击进入抢票测试" : "点击查看预约票档";
+  document.body.classList.toggle("is-rush-ready", leftMs <= 3_000);
 }
 
-touchPad.addEventListener("pointerdown", (event) => {
-  event.preventDefault();
-  state = recordTouch(state, performance.now());
-  render();
+reservedButton.addEventListener("click", () => {
+  window.location.href = practiceDestination(currentRemainingMs());
 });
 
 resetButton.addEventListener("click", () => {
-  state = resetTouchTest();
+  targetMs = Date.now() + PRACTICE_DURATION_MS;
+  sessionStorage.setItem(TARGET_STORAGE_KEY, String(targetMs));
   render();
 });
 
-document.addEventListener("contextmenu", (event) => event.preventDefault());
+window.setInterval(render, 50);
 render();

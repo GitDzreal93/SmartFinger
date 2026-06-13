@@ -235,22 +235,20 @@ async function sendSequence(commands) {
   }
 }
 
-function playBeep() {
-  const ctx = new AudioContext();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.frequency.value = 880;
-  gain.gain.setValueAtTime(0.6, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.4);
+function speakRushPhrase(action) {
+  if (!("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(action === "start" ? "开始抢票" : "结束抢票");
+  utterance.lang = "zh-CN";
+  utterance.rate = 1.05;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
 }
 
 async function runRushAction(action) {
   await send(buildRushCommand(action));
-  if (action === "start") playBeep();
+  speakRushPhrase(action);
 }
 
 async function syncClock() {
