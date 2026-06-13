@@ -44,6 +44,12 @@ def main():
         lines = send(port, "STATUS", 0.5)
         require_line(lines, "initial STATE response", lambda line: line.startswith("STATE "))
 
+        lines = send(port, "RUSH START", 0.5)
+        require_line(lines, "rush running state", lambda line: "mode=RUSH" in line and "rush=1" in line)
+
+        lines = send(port, "RUSH STOP", 0.4)
+        require_line(lines, "rush stopped state", lambda line: "mode=STOP" in line and "rush=0" in line)
+
         lines = send(port, "SELECT 2", 0.4)
         require_line(lines, "selected fixed grade", lambda line: "selected_grade=2" in line)
 

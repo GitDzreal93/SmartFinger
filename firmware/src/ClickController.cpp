@@ -19,6 +19,8 @@ void ClickController::setGrade(uint8_t nextGrade, unsigned long nowMs) {
   }
 
   grade_ = nextGrade;
+  rushMode_ = false;
+  rushCycleActive_ = false;
   releaseTap();
   phaseStartedMs_ = nowMs;
   adaptiveRunStarted_ = false;
@@ -31,11 +33,26 @@ void ClickController::setGrade(uint8_t nextGrade, unsigned long nowMs) {
   adaptiveStep_ = (nextGrade == AppConfig::kAdaptiveGrade) ? AdaptiveStep::Calculate : AdaptiveStep::Idle;
 }
 
+void ClickController::startRush(unsigned long nowMs) {
+  setGrade(0, nowMs);
+  rushMode_ = true;
+  adaptiveStep_ = AdaptiveStep::Calculate;
+}
+
+void ClickController::stopRush(unsigned long nowMs) {
+  setGrade(0, nowMs);
+}
+
 void ClickController::restart(unsigned long nowMs) {
   setGrade(grade_, nowMs);
 }
 
 void ClickController::update(unsigned long nowMs) {
+  if (rushMode_) {
+    updateRush();
+    return;
+  }
+
   if (grade_ == 0) {
     releaseTap();
     return;
@@ -65,6 +82,9 @@ uint8_t ClickController::grade() const {
 }
 
 bool ClickController::isRunning() const {
+  if (rushMode_) {
+    return true;
+  }
   if (grade_ == AppConfig::kAdaptiveGrade) {
     return !adaptiveRunLocked_;
   }
@@ -81,6 +101,10 @@ bool ClickController::isAdaptiveMode() const {
 
 bool ClickController::isAdaptiveComplete() const {
   return grade_ == AppConfig::kAdaptiveGrade && adaptiveRunLocked_;
+}
+
+bool ClickController::isRushMode() const {
+  return rushMode_;
 }
 
 const ClickProfile& ClickController::currentProfile() const {
@@ -257,6 +281,40 @@ void ClickController::completeAdaptiveRun(unsigned long completedAtUs) {
   } else {
     lastAdaptiveRun_.averageCps = 0.0f;
   }
+}
+
+void ClickController::updateRush() {
+  const unsigned long nowUs = micros();
+  if (!rushCycleActive_) {
+    startRushCycle(nowUs);
+    return;
+  }
+
+  if (tapping_ && nowUs >= rushTapEndsUs_) {
+    releaseTap();
+    adaptiveStep_ = AdaptiveStep::Release;
+  }
+
+  if (!tapping_ && nowUs >= rushCycleEndsUs_) {
+    rushCycleActive_ = false;
+    adaptiveStep_ = AdaptiveStep::Calculate;
+  }
+}
+
+void ClickController::startRushCycle(unsigned long nowUs) {
+  const unsigned long totalCycleUs =
+      static_cast<unsigned long>(random(AppConfig::kRushMinCycleUs, AppConfig::kRushMaxCycleUs + 1));
+  unsigned long tapUs =
+      static_cast<unsigned long>(random(AppConfig::kRushMinTapUs, AppConfig::kRushMaxTapUs + 1));
+  if (totalCycleUs - tapUs < static_cast<unsigned long>(AppConfig::kRushMinReleaseUs)) {
+    tapUs = totalCycleUs - AppConfig::kRushMinReleaseUs;
+  }
+
+  rushCycleActive_ = true;
+  rushTapEndsUs_ = nowUs + tapUs;
+  rushCycleEndsUs_ = nowUs + totalCycleUs;
+  startTap();
+  adaptiveStep_ = AdaptiveStep::Press;
 }
 
 float ClickController::randomUnit() const {

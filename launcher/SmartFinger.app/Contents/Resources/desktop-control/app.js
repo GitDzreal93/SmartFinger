@@ -1,5 +1,6 @@
 import {
   buildImmediateStartCommands,
+  buildRushCommand,
   buildScheduledStartCommands,
   choosePreferredSerialPort,
   formatDateTimeForInput,
@@ -22,12 +23,16 @@ const ui = {
   connectionHealth: $("#connection-health"),
   workspace: $("#workspace"),
   modeButtons: $$(".mode-button"),
-  immediatePanel: $("#immediate-panel"),
+  rushPanel: $("#rush-panel"),
+  gradePanel: $("#grade-panel"),
   scheduledPanel: $("#scheduled-panel"),
+  rushStartButton: $("#rush-start-button"),
+  rushStopButton: $("#rush-stop-button"),
+  rushState: $("#rush-state"),
   gradeCards: $$(".grade-card"),
   immediateStartButton: $("#immediate-start-button"),
   immediateStopButton: $("#immediate-stop-button"),
-  immediateState: $("#immediate-state"),
+  gradeState: $("#grade-state"),
   tapMsInput: $("#tap-ms-input"),
   restMsInput: $("#rest-ms-input"),
   applyProfileButton: $("#apply-profile-button"),
@@ -144,7 +149,8 @@ function renderDeviceState(device) {
   ui.stateGrade.textContent = grade;
   ui.selectedGrade.textContent = String(selectedGrade);
   ui.lastCps.textContent = device.last_avg_cps ?? "--";
-  ui.immediateState.textContent = mode === "RUN" && Number(grade) >= 1 && Number(grade) <= 5
+  ui.rushState.textContent = mode === "RUSH" ? "抢票中" : "未运行";
+  ui.gradeState.textContent = mode === "RUN" && Number(grade) >= 1 && Number(grade) <= 5
     ? `${grade} 档运行中`
     : "未运行";
   ui.scheduledState.textContent = mode === "ARMED" ? "已武装" : mode === "RUN" && grade === "6" ? "执行中" : mode === "DONE" ? "已完成" : "未武装";
@@ -296,9 +302,9 @@ async function armAbsoluteSchedule() {
 }
 
 function selectMode(mode) {
-  const immediate = mode === "immediate";
-  ui.immediatePanel.classList.toggle("is-hidden", !immediate);
-  ui.scheduledPanel.classList.toggle("is-hidden", immediate);
+  ui.rushPanel.classList.toggle("is-hidden", mode !== "rush");
+  ui.gradePanel.classList.toggle("is-hidden", mode !== "grade");
+  ui.scheduledPanel.classList.toggle("is-hidden", mode !== "scheduled");
   ui.modeButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.mode === mode));
 }
 
@@ -315,6 +321,8 @@ function bindEvents() {
     await send("STATUS", { quiet: true });
   }));
 
+  ui.rushStartButton.addEventListener("click", () => send(buildRushCommand("start")).catch((error) => log(`启动抢票失败：${error.message}`)));
+  ui.rushStopButton.addEventListener("click", () => send(buildRushCommand("stop")).catch((error) => log(`停止抢票失败：${error.message}`)));
   ui.immediateStartButton.addEventListener("click", () => sendSequence(buildImmediateStartCommands({ grade: state.selectedGrade })).catch((error) => log(`启动失败：${error.message}`)));
   ui.immediateStopButton.addEventListener("click", () => send("STOP").catch((error) => log(`停止失败：${error.message}`)));
   ui.applyProfileButton.addEventListener("click", () => send(`PROFILE ${Number(ui.tapMsInput.value)} ${Number(ui.restMsInput.value)}`).catch((error) => log(`设置频率失败：${error.message}`)));

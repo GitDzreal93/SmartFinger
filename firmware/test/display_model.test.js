@@ -2,6 +2,7 @@ const assert = require("assert");
 const {
   buildStatusLines,
   computeAdaptiveCycle,
+  computeRushCycle,
   createTapScheduler,
   getClickProfile,
   normalizeTimeString,
@@ -52,6 +53,25 @@ assert.deepStrictEqual(buildStatusLines({
   "Mode: RUN",
   "Grade: 6",
   "Left: 4.2s",
+  "Step: PRESS",
+  "Tap GPIO3 HIGH",
+]);
+
+assert.deepStrictEqual(buildStatusLines({
+  grade: 0,
+  rate: 0,
+  tapPin: 3,
+  sda: 8,
+  scl: 9,
+  activeHigh: true,
+  running: true,
+  rushMode: true,
+  adaptiveStep: "PRESS",
+}), [
+  "SmartFinger Tap",
+  "Mode: RUSH",
+  "Grade: 0",
+  "Rate: 28-33/s",
   "Step: PRESS",
   "Tap GPIO3 HIGH",
 ]);
@@ -126,6 +146,18 @@ assert.deepStrictEqual(longPauseCycle, {
   tapUs: 18000,
   releaseUs: 73000,
   longPause: true,
+});
+
+assert.deepStrictEqual(computeRushCycle({ totalCycleUs: 30000, tapUs: 18000 }), {
+  totalCycleUs: 30000,
+  tapUs: 18000,
+  releaseUs: 12000,
+});
+
+assert.deepStrictEqual(computeRushCycle({ totalCycleUs: 28000, tapUs: 20000 }), {
+  totalCycleUs: 30000,
+  tapUs: 18000,
+  releaseUs: 12000,
 });
 
 adaptiveScheduler.updateAdaptiveCycle({ totalCycleUs: 30000, tapUs: 18000, releaseUs: 12000 });

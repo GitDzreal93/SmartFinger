@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   buildImmediateStartCommands,
+  buildRushCommand,
   buildScheduledStartCommands,
   choosePreferredSerialPort,
   formatDateTimeForInput,
@@ -29,6 +30,9 @@ assert.equal(formatTimeForCommand(new Date(2026, 5, 11, 9, 5, 3)), "09:05:03");
 
 assert.deepEqual(buildImmediateStartCommands({ grade: 3 }), ["SELECT 3", "START"]);
 assert.throws(() => buildImmediateStartCommands({ grade: 6 }), /1-5/);
+assert.equal(buildRushCommand("start"), "RUSH START");
+assert.equal(buildRushCommand("stop"), "RUSH STOP");
+assert.throws(() => buildRushCommand("pause"), /start or stop/);
 
 assert.deepEqual(
   buildScheduledStartCommands({

@@ -22,6 +22,7 @@ struct DisplaySnapshot {
   ClickProfile profile;
   bool running;
   bool adaptiveMode;
+  bool rushMode;
   bool armed;
   unsigned long remainingMs;
   AdaptiveStep adaptiveStep;

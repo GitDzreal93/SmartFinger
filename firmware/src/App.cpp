@@ -63,7 +63,7 @@ void App::begin() {
   }
 
   Serial.println("SmartFinger firmware init OK");
-  Serial.println("Commands: SELECT <1-5> | START | STOP | TIME HH:MM:SS | AT HH:MM:SS | IN <seconds> | CANCEL | STATUS | PROFILE <tap_ms> <rest_ms> | PROFILE CLEAR");
+  Serial.println("Commands: RUSH START|STOP | SELECT <1-5> | START | STOP | TIME HH:MM:SS | AT HH:MM:SS | IN <seconds> | CANCEL | STATUS | PROFILE <tap_ms> <rest_ms> | PROFILE CLEAR");
   refreshDisplay(millis());
   emitState(millis());
 }
@@ -83,7 +83,8 @@ void App::loop() {
       lastAdaptiveDisplayRefreshMs = nowMs;
     }
   }
-  if ((scheduleState_.armed || (clickController_.isAdaptiveMode() && clickController_.isRunning())) &&
+  if ((scheduleState_.armed || clickController_.isRushMode() ||
+       (clickController_.isAdaptiveMode() && clickController_.isRunning())) &&
       nowMs - lastStateEmitMs_ >= 200) {
     emitState(nowMs);
   }
@@ -186,6 +187,26 @@ void App::handleCommand(const String& line, unsigned long nowMs) {
     return;
   }
 
+  if (verb == "RUSH") {
+    if (arg.equalsIgnoreCase("START")) {
+      cancelSchedule();
+      clickController_.startRush(nowMs);
+      refreshDisplay(nowMs);
+      emitOk("Rush mode started.");
+      emitState(nowMs);
+      return;
+    }
+    if (arg.equalsIgnoreCase("STOP")) {
+      clickController_.stopRush(nowMs);
+      refreshDisplay(nowMs);
+      emitOk("Rush mode stopped.");
+      emitState(nowMs);
+      return;
+    }
+    emitError("RUSH expects START or STOP");
+    return;
+  }
+
   if (verb == "GRADE") {
     const int grade = arg.toInt();
     if (grade < 0 || grade > AppConfig::kMaxGrade) {
@@ -283,6 +304,8 @@ void App::emitState(unsigned long nowMs) {
   Serial.print(scheduleState_.armed ? 1 : 0);
   Serial.print(" adaptive=");
   Serial.print(clickController_.isAdaptiveMode() ? 1 : 0);
+  Serial.print(" rush=");
+  Serial.print(clickController_.isRushMode() ? 1 : 0);
   Serial.print(" step=");
   Serial.print(currentStepLabel());
   Serial.print(" left_ms=");
@@ -403,6 +426,9 @@ String App::currentModeLabel() const {
   if (scheduleState_.armed) {
     return "ARMED";
   }
+  if (clickController_.isRushMode()) {
+    return "RUSH";
+  }
   if (clickController_.grade() == 0) {
     return "STOP";
   }
@@ -438,6 +464,7 @@ void App::refreshDisplay(unsigned long nowMs) {
       clickController_.currentProfile(),
       clickController_.isRunning(),
       clickController_.isAdaptiveMode(),
+      clickController_.isRushMode(),
       scheduleState_.armed && clickController_.grade() == AppConfig::kAdaptiveGrade,
       scheduleState_.armed ? scheduleRemainingMs(nowMs) : clickController_.adaptiveRemainingMs(),
       scheduleState_.armed ? AdaptiveStep::Idle : clickController_.adaptiveStep(),

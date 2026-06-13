@@ -68,6 +68,13 @@ export function buildImmediateStartCommands({ grade }) {
   return [`SELECT ${numericGrade}`, "START"];
 }
 
+export function buildRushCommand(action) {
+  if (action !== "start" && action !== "stop") {
+    throw new TypeError("Rush action must be start or stop");
+  }
+  return `RUSH ${action.toUpperCase()}`;
+}
+
 export function buildScheduledStartCommands({ computerTime, type, value }) {
   if (type === "countdown") {
     const seconds = Number(value);

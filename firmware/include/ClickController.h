@@ -16,6 +16,8 @@ class ClickController {
 
   void begin();
   void setGrade(uint8_t nextGrade, unsigned long nowMs);
+  void startRush(unsigned long nowMs);
+  void stopRush(unsigned long nowMs);
   void restart(unsigned long nowMs);
   void update(unsigned long nowMs);
   void setFixedProfileOverride(uint16_t tapMs, uint16_t restMs);
@@ -26,6 +28,7 @@ class ClickController {
   bool isTapping() const;
   bool isAdaptiveMode() const;
   bool isAdaptiveComplete() const;
+  bool isRushMode() const;
   const ClickProfile& currentProfile() const;
   bool hasFixedProfileOverride() const;
   ClickProfile fixedProfileOverride() const;
@@ -45,6 +48,8 @@ class ClickController {
   void startAdaptiveCycle(unsigned long nowUs);
   AdaptiveCycle buildAdaptiveCycle(unsigned long elapsedUs) const;
   void completeAdaptiveRun(unsigned long completedAtUs);
+  void updateRush();
+  void startRushCycle(unsigned long nowUs);
   float randomUnit() const;
   float randomGaussian() const;
 
@@ -68,4 +73,8 @@ class ClickController {
   unsigned long adaptiveCycleEndsUs_ = 0;
   AdaptiveStep adaptiveStep_ = AdaptiveStep::Idle;
   AdaptiveRunStats lastAdaptiveRun_ = {0, 0, 0.0f};
+  bool rushMode_ = false;
+  bool rushCycleActive_ = false;
+  unsigned long rushTapEndsUs_ = 0;
+  unsigned long rushCycleEndsUs_ = 0;
 };

@@ -34,29 +34,55 @@
 
       <section class="workspace is-locked" id="workspace">
         <div class="mode-switch" role="tablist" aria-label="执行方式">
-          <button class="mode-button is-active" data-mode="immediate" role="tab">
+          <button class="mode-button is-active" data-mode="rush" role="tab">
             <span class="mode-index">2A</span>
             <span>
-              <strong>立即执行</strong>
-              <small>选择 1-5 档，持续循环点击，手动停止</small>
+              <strong>极速抢票</strong>
+              <small>高速随机节奏，手动开始和停止</small>
+            </span>
+          </button>
+          <button class="mode-button" data-mode="grade" role="tab">
+            <span class="mode-index">2B</span>
+            <span>
+              <strong>档位点击</strong>
+              <small>选择 1-5 档，持续循环点击</small>
             </span>
           </button>
           <button class="mode-button" data-mode="scheduled" role="tab">
-            <span class="mode-index">2B</span>
+            <span class="mode-index">2C</span>
             <span>
-              <strong>定时执行</strong>
-              <small>倒计时抢票模式，到点自动执行 5 秒</small>
+              <strong>定时触发</strong>
+              <small>指定日期时间，到点自动执行 5 秒</small>
             </span>
           </button>
         </div>
 
-        <section class="mode-panel" id="immediate-panel">
+        <section class="mode-panel" id="rush-panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">立即执行</p>
+              <p class="eyebrow">极速抢票</p>
+              <h2>高频连续点击</h2>
+            </div>
+            <span class="mode-state" id="rush-state">未运行</span>
+          </div>
+
+          <div class="schedule-explainer">
+            每次点击使用窄幅随机节奏，约 28–33 次/秒。启动后持续运行，直到手动停止。
+          </div>
+
+          <div class="primary-actions">
+            <button class="button start" id="rush-start-button">开始抢票</button>
+            <button class="button stop" id="rush-stop-button">停止抢票</button>
+          </div>
+        </section>
+
+        <section class="mode-panel is-hidden" id="grade-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">档位点击</p>
               <h2>选择循环点击频率</h2>
             </div>
-            <span class="mode-state" id="immediate-state">未运行</span>
+            <span class="mode-state" id="grade-state">未运行</span>
           </div>
 
           <div class="grade-list" id="grade-list">
@@ -88,7 +114,7 @@
         <section class="mode-panel is-hidden" id="scheduled-panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">定时执行</p>
+              <p class="eyebrow">定时触发</p>
               <h2>设置抢票模式启动时间</h2>
             </div>
             <span class="mode-state" id="scheduled-state">未武装</span>
@@ -128,7 +154,7 @@
           <div class="monitor-summary">
             <div><span>模式</span><strong id="state-mode">STOP</strong></div>
             <div><span>设备档位</span><strong id="state-grade">0</strong></div>
-            <div><span>立即执行档位</span><strong id="selected-grade">3</strong></div>
+            <div><span>档位点击档位</span><strong id="selected-grade">3</strong></div>
             <div><span>最近 CPS</span><strong id="last-cps">--</strong></div>
           </div>
           <details class="logs">

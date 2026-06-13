@@ -25,10 +25,22 @@ function buildStatusLines({
   activeHigh,
   running = grade > 0,
   adaptiveMode = false,
+  rushMode = false,
   remainingMs = 0,
   adaptiveStep = "IDLE",
   armed = false,
 }) {
+  if (rushMode) {
+    return [
+      "SmartFinger Tap",
+      "Mode: RUSH",
+      `Grade: ${grade}`,
+      "Rate: 28-33/s",
+      `Step: ${adaptiveStep}`,
+      `Tap GPIO${tapPin} ${activeHigh ? "HIGH" : "LOW"}`,
+    ];
+  }
+
   if (adaptiveMode) {
     return [
       "SmartFinger Tap",
@@ -90,6 +102,20 @@ function computeAdaptiveCycle({
     tapUs,
     releaseUs: totalCycleUs - tapUs,
     longPause,
+  };
+}
+
+function computeRushCycle({ totalCycleUs, tapUs }) {
+  const normalizedCycleUs = Math.max(30000, Math.min(36000, totalCycleUs));
+  let normalizedTapUs = Math.max(14000, Math.min(18000, tapUs));
+  if (normalizedCycleUs - normalizedTapUs < 12000) {
+    normalizedTapUs = normalizedCycleUs - 12000;
+  }
+
+  return {
+    totalCycleUs: normalizedCycleUs,
+    tapUs: normalizedTapUs,
+    releaseUs: normalizedCycleUs - normalizedTapUs,
   };
 }
 
@@ -170,6 +196,7 @@ function createTapScheduler() {
 module.exports = {
   buildStatusLines,
   computeAdaptiveCycle,
+  computeRushCycle,
   createTapScheduler,
   getClickProfile,
   normalizeTimeString,

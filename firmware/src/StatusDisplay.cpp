@@ -46,12 +46,21 @@ void StatusDisplay::render(const DisplaySnapshot& snapshot,
   display_.print("Mode: ");
   if (snapshot.armed) {
     display_.println("ARMED");
+  } else if (snapshot.rushMode) {
+    display_.println("RUSH");
   } else {
     display_.println(snapshot.running ? "RUN" : "STOP");
   }
   display_.print("Grade: ");
   display_.println(snapshot.grade);
-  if (!snapshot.adaptiveMode) {
+  if (snapshot.rushMode) {
+    display_.println("Rate: 28-33/s");
+    display_.print("Step: ");
+    display_.println(adaptiveStepLabel(snapshot.adaptiveStep));
+    display_.print("Tap GPIO");
+    display_.print(tapPin);
+    display_.println(activeHigh ? " HIGH" : " LOW");
+  } else if (!snapshot.adaptiveMode) {
     display_.print("Rate: ");
     display_.print(snapshot.profile.rate);
     display_.println("/s");

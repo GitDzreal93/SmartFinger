@@ -31,6 +31,11 @@ constexpr long kAdaptiveMinReleaseUs = 12000L;
 constexpr float kAdaptiveLongPauseChance = 0.04f;
 constexpr float kAdaptiveCycleJitterStdUs = 2200.0f;
 constexpr float kAdaptiveTapJitterStdUs = 1800.0f;
+constexpr long kRushMinCycleUs = 30000L;
+constexpr long kRushMaxCycleUs = 36000L;
+constexpr long kRushMinTapUs = 14000L;
+constexpr long kRushMaxTapUs = 18000L;
+constexpr long kRushMinReleaseUs = 12000L;
 
 constexpr ClickProfile kClickProfiles[] = {
   {0, 0, 0},
