@@ -8,7 +8,9 @@ import {
   formatTimeForCommand,
   normalizeDateTimeLocalToSecond,
   parseStateLine,
+  rushShortcutAction,
 } from "./control-model.mjs";
+import { buildTouchTestUrl } from "./link-utils.mjs";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -52,6 +54,7 @@ const ui = {
   refreshStatusButton: $("#refresh-status-button"),
   clearLogButton: $("#clear-log-button"),
   logOutput: $("#log-output"),
+  touchTestLink: $("#touch-test-link"),
 };
 
 const state = {
@@ -69,6 +72,7 @@ const state = {
   deviceLeftMs: 0,
   deviceStep: "WAIT",
   scheduleTargetAtMs: null,
+  touchTestUrl: "./test/",
 };
 
 function log(message, kind = "info") {
@@ -90,6 +94,39 @@ function renderConnection() {
     : state.connected
       ? "串口已打开，但尚未收到设备回包。"
       : "等待连接";
+}
+
+function setTouchTestLink(url) {
+  state.touchTestUrl = url;
+  ui.touchTestLink.href = url;
+  ui.touchTestLink.textContent = url;
+}
+
+async function copyTouchTestUrl() {
+  const text = state.touchTestUrl;
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to the legacy clipboard path.
+  }
+
+  const input = document.createElement("textarea");
+  input.value = text;
+  input.setAttribute("readonly", "");
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  input.style.pointerEvents = "none";
+  document.body.appendChild(input);
+  input.select();
+  input.setSelectionRange(0, input.value.length);
+
+  const copied = document.execCommand("copy");
+  document.body.removeChild(input);
+  return copied;
 }
 
 function formatTargetDateTime(timestampMs) {
@@ -196,6 +233,24 @@ async function sendSequence(commands) {
     await send(command);
     await wait(60);
   }
+}
+
+function playBeep() {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = 880;
+  gain.gain.setValueAtTime(0.6, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.4);
+}
+
+async function runRushAction(action) {
+  await send(buildRushCommand(action));
+  if (action === "start") playBeep();
 }
 
 async function syncClock() {
@@ -309,6 +364,21 @@ function selectMode(mode) {
 }
 
 function bindEvents() {
+  ui.touchTestLink.addEventListener("click", async (event) => {
+    event.preventDefault();
+    try {
+      const copied = await copyTouchTestUrl();
+      if (copied) {
+        ui.touchTestLink.classList.add("is-copied");
+        window.setTimeout(() => ui.touchTestLink.classList.remove("is-copied"), 1200);
+      } else {
+        log("复制测试地址失败，请手动选择链接文本。");
+      }
+    } catch {
+      log("复制测试地址失败，请手动选择链接文本。");
+    }
+  });
+
   ui.connectButton.addEventListener("click", () => connectWithCleanup().catch((error) => {
     log(`连接失败：${error.message}`);
   }));
@@ -321,8 +391,8 @@ function bindEvents() {
     await send("STATUS", { quiet: true });
   }));
 
-  ui.rushStartButton.addEventListener("click", () => send(buildRushCommand("start")).catch((error) => log(`启动抢票失败：${error.message}`)));
-  ui.rushStopButton.addEventListener("click", () => send(buildRushCommand("stop")).catch((error) => log(`停止抢票失败：${error.message}`)));
+  ui.rushStartButton.addEventListener("click", () => runRushAction("start").catch((error) => log(`启动抢票失败：${error.message}`)));
+  ui.rushStopButton.addEventListener("click", () => runRushAction("stop").catch((error) => log(`停止抢票失败：${error.message}`)));
   ui.immediateStartButton.addEventListener("click", () => sendSequence(buildImmediateStartCommands({ grade: state.selectedGrade })).catch((error) => log(`启动失败：${error.message}`)));
   ui.immediateStopButton.addEventListener("click", () => send("STOP").catch((error) => log(`停止失败：${error.message}`)));
   ui.applyProfileButton.addEventListener("click", () => send(`PROFILE ${Number(ui.tapMsInput.value)} ${Number(ui.restMsInput.value)}`).catch((error) => log(`设置频率失败：${error.message}`)));
@@ -338,6 +408,14 @@ function bindEvents() {
   ui.refreshStatusButton.addEventListener("click", () => send("STATUS").catch((error) => log(`刷新失败：${error.message}`)));
   ui.clearLogButton.addEventListener("click", () => { ui.logOutput.textContent = ""; });
 
+  window.addEventListener("keydown", (event) => {
+    const action = rushShortcutAction(event);
+    if (!action) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    runRushAction(action).catch((error) => log(`快捷键${action === "start" ? "启动" : "停止"}抢票失败：${error.message}`));
+  }, true);
+
   window.addEventListener("pagehide", () => {
     disconnect({ quiet: true }).catch(() => {});
   });
@@ -351,6 +429,18 @@ function init() {
   renderConnection();
   bindEvents();
   ui.targetDateTimeInput.value = formatDateTimeForInput(new Date(Date.now() + 60_000));
+  fetch("/__smartfinger__/runtime.json")
+    .then((response) => response.ok ? response.json() : null)
+    .then((runtime) => {
+      if (runtime?.ip && runtime?.port) {
+        setTouchTestLink(buildTouchTestUrl(runtime.ip, runtime.port));
+        return;
+      }
+      setTouchTestLink(buildTouchTestUrl(window.location.hostname || "localhost", window.location.port || "4173"));
+    })
+    .catch(() => {
+      setTouchTestLink(buildTouchTestUrl(window.location.hostname || "localhost", window.location.port || "4173"));
+    });
   window.setInterval(() => {
     ui.computerClock.textContent = `电脑时间 ${formatTimeForCommand(new Date())}`;
     renderScheduleCountdown();

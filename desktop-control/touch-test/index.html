@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>SmartFinger 点击测试</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="test-shell">
+      <header class="test-header">
+        <div>
+          <p class="eyebrow">SmartFinger Touch Test</p>
+          <h1>手机点击间隔测试</h1>
+          <p class="description">把 SmartFinger 对准下方区域，页面会记录每次点击之间的实际间隔。</p>
+        </div>
+        <a class="back-link" href="../">返回控制台</a>
+      </header>
+
+      <button id="touch-pad" class="touch-pad" type="button">
+        <span id="pad-value">等待点击</span>
+        <small id="pad-hint">首次点击后开始计算间隔</small>
+      </button>
+
+      <section class="stats-panel" aria-live="polite">
+        <div class="stats-heading">
+          <h2>实时统计</h2>
+          <button id="reset-button" class="reset-button" type="button">清空数据</button>
+        </div>
+        <div class="stats-grid">
+          <div><span>最近一次</span><strong id="last-interval">--</strong></div>
+          <div><span>点击次数</span><strong id="click-count">0</strong></div>
+          <div><span>平均间隔</span><strong id="average-interval">--</strong></div>
+          <div><span>最快间隔</span><strong id="minimum-interval">--</strong></div>
+          <div><span>最慢间隔</span><strong id="maximum-interval">--</strong></div>
+          <div><span>标准差（抖动）</span><strong id="standard-deviation">--</strong></div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -75,6 +75,14 @@ export function buildRushCommand(action) {
   return `RUSH ${action.toUpperCase()}`;
 }
 
+export function rushShortcutAction(event) {
+  if (event.repeat) return null;
+  const shortcut = event.code || event.key;
+  if (shortcut === "F5") return "start";
+  if (shortcut === "F6") return "stop";
+  return null;
+}
+
 export function buildScheduledStartCommands({ computerTime, type, value }) {
   if (type === "countdown") {
     const seconds = Number(value);

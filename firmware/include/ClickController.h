@@ -4,6 +4,8 @@
 
 #include "AppConfig.h"
 
+enum RushPhase { RUSH_IDLE, RUSH_BURST, RUSH_HOLD };
+
 class ClickController {
  public:
   struct AdaptiveRunStats {
@@ -49,7 +51,7 @@ class ClickController {
   AdaptiveCycle buildAdaptiveCycle(unsigned long elapsedUs) const;
   void completeAdaptiveRun(unsigned long completedAtUs);
   void updateRush();
-  void startRushCycle(unsigned long nowUs);
+  void startRushCycle(int64_t nowUs);
   float randomUnit() const;
   float randomGaussian() const;
 
@@ -74,7 +76,9 @@ class ClickController {
   AdaptiveStep adaptiveStep_ = AdaptiveStep::Idle;
   AdaptiveRunStats lastAdaptiveRun_ = {0, 0, 0.0f};
   bool rushMode_ = false;
+  RushPhase rushPhase_ = RUSH_IDLE;
   bool rushCycleActive_ = false;
-  unsigned long rushTapEndsUs_ = 0;
-  unsigned long rushCycleEndsUs_ = 0;
+  int64_t rushStartTimeUs_ = 0;
+  int64_t rushTapEndsUs_ = 0;
+  int64_t rushCycleEndsUs_ = 0;
 };

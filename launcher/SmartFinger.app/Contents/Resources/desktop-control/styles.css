@@ -53,9 +53,33 @@ h3 { margin-bottom: 6px; }
 
 .top-status {
   display: flex;
+  align-items: center;
   gap: 10px;
   color: var(--muted);
   font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.utility-link {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.utility-link--copy {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border-bottom: 1px dashed rgba(23, 32, 51, .35);
+  border-radius: 0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: -0.01em;
+}
+
+.utility-link--copy.is-copied {
+  border-bottom-color: var(--green);
+  color: var(--green);
 }
 
 .status-dot {

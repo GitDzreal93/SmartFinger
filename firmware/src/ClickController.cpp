@@ -1,15 +1,32 @@
 #include "ClickController.h"
 
 #include <math.h>
+#include <stdlib.h>
 
 #include <esp_system.h>
+#include <esp_timer.h>
+
+namespace {
+
+float gaussianRandom(float mu, float sigma) {
+  float u1;
+  float u2;
+  do {
+    u1 = static_cast<float>(rand()) / RAND_MAX;
+  } while (u1 <= 1e-7f);
+  u2 = static_cast<float>(rand()) / RAND_MAX;
+  const float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * M_PI * u2);
+  return mu + sigma * z;
+}
+
+}  // namespace
 
 ClickController::ClickController(int tapPin, int activeLevel, int idleLevel)
     : tapPin_(tapPin), activeLevel_(activeLevel), idleLevel_(idleLevel) {}
 
 void ClickController::begin() {
   pinMode(tapPin_, OUTPUT);
-  randomSeed(static_cast<unsigned long>(esp_random()));
+  srand(static_cast<unsigned int>(esp_random()));
   releaseTap();
 }
 
@@ -20,6 +37,7 @@ void ClickController::setGrade(uint8_t nextGrade, unsigned long nowMs) {
 
   grade_ = nextGrade;
   rushMode_ = false;
+  rushPhase_ = RUSH_IDLE;
   rushCycleActive_ = false;
   releaseTap();
   phaseStartedMs_ = nowMs;
@@ -36,6 +54,8 @@ void ClickController::setGrade(uint8_t nextGrade, unsigned long nowMs) {
 void ClickController::startRush(unsigned long nowMs) {
   setGrade(0, nowMs);
   rushMode_ = true;
+  rushPhase_ = RUSH_BURST;
+  rushStartTimeUs_ = esp_timer_get_time();
   adaptiveStep_ = AdaptiveStep::Calculate;
 }
 
@@ -158,7 +178,7 @@ unsigned long ClickController::adaptiveRemainingMs() const {
     return AppConfig::kAdaptiveRunDurationUs / 1000UL;
   }
 
-  const unsigned long elapsedUs = micros() - adaptiveStartedUs_;
+  const unsigned long elapsedUs = static_cast<unsigned long>(esp_timer_get_time()) - adaptiveStartedUs_;
   if (elapsedUs >= AppConfig::kAdaptiveRunDurationUs) {
     return 0;
   }
@@ -179,12 +199,12 @@ void ClickController::updateAdaptiveRun() {
 
   if (!adaptiveRunStarted_) {
     adaptiveRunStarted_ = true;
-    adaptiveStartedUs_ = micros();
+    adaptiveStartedUs_ = static_cast<unsigned long>(esp_timer_get_time());
     lastAdaptiveRun_ = {0, 0, 0.0f};
     adaptiveStep_ = AdaptiveStep::Calculate;
   }
 
-  const unsigned long nowUs = micros();
+  const unsigned long nowUs = static_cast<unsigned long>(esp_timer_get_time());
   const unsigned long elapsedUs = nowUs - adaptiveStartedUs_;
   if (elapsedUs >= AppConfig::kAdaptiveRunDurationUs) {
     completeAdaptiveRun(nowUs);
@@ -240,8 +260,12 @@ ClickController::AdaptiveCycle ClickController::buildAdaptiveCycle(unsigned long
 
   unsigned long totalCycleUs = 0;
   if (randomUnit() < AppConfig::kAdaptiveLongPauseChance) {
-    totalCycleUs =
-        static_cast<unsigned long>(random(AppConfig::kAdaptiveLongPauseMinUs, AppConfig::kAdaptiveLongPauseMaxUs + 1));
+    const float pauseMeanUs =
+        (static_cast<float>(AppConfig::kAdaptiveLongPauseMinUs) + AppConfig::kAdaptiveLongPauseMaxUs) / 2.0f;
+    const float pauseSigmaUs =
+        (static_cast<float>(AppConfig::kAdaptiveLongPauseMaxUs) - AppConfig::kAdaptiveLongPauseMinUs) / 6.0f;
+    totalCycleUs = static_cast<unsigned long>(
+        max<long>(AppConfig::kAdaptiveLongPauseMinUs, lroundf(gaussianRandom(pauseMeanUs, pauseSigmaUs))));
   } else {
     const long jitteredCycleUs =
         lroundf(fatigueBaseCycleUs + randomGaussian() * AppConfig::kAdaptiveCycleJitterStdUs);
@@ -284,7 +308,18 @@ void ClickController::completeAdaptiveRun(unsigned long completedAtUs) {
 }
 
 void ClickController::updateRush() {
-  const unsigned long nowUs = micros();
+  const int64_t nowUs = esp_timer_get_time();
+  const int64_t elapsedMs = (nowUs - rushStartTimeUs_) / 1000;
+
+  if (elapsedMs >= AUTO_STOP_MS) {
+    stopRush(static_cast<unsigned long>(nowUs / 1000));
+    return;
+  }
+
+  if (rushPhase_ == RUSH_BURST && elapsedMs >= BURST_DURATION_MS) {
+    rushPhase_ = RUSH_HOLD;
+  }
+
   if (!rushCycleActive_) {
     startRushCycle(nowUs);
     return;
@@ -301,32 +336,38 @@ void ClickController::updateRush() {
   }
 }
 
-void ClickController::startRushCycle(unsigned long nowUs) {
-  const unsigned long totalCycleUs =
-      static_cast<unsigned long>(random(AppConfig::kRushMinCycleUs, AppConfig::kRushMaxCycleUs + 1));
-  unsigned long tapUs =
-      static_cast<unsigned long>(random(AppConfig::kRushMinTapUs, AppConfig::kRushMaxTapUs + 1));
-  if (totalCycleUs - tapUs < static_cast<unsigned long>(AppConfig::kRushMinReleaseUs)) {
-    tapUs = totalCycleUs - AppConfig::kRushMinReleaseUs;
+void ClickController::startRushCycle(int64_t nowUs) {
+  const bool holdPhase = rushPhase_ == RUSH_HOLD;
+  const int cycleMinMs = holdPhase ? HOLD_CYCLE_MIN_MS : BURST_CYCLE_MIN_MS;
+  const int cycleMaxMs = holdPhase ? HOLD_CYCLE_MAX_MS : BURST_CYCLE_MAX_MS;
+  const float pressMeanMs = holdPhase ? HOLD_PRESS_MEAN_MS : BURST_PRESS_MEAN_MS;
+  const float pressSigmaMs = holdPhase ? HOLD_PRESS_SIGMA_MS : BURST_PRESS_SIGMA_MS;
+
+  const int totalMs = cycleMinMs + rand() % (cycleMaxMs - cycleMinMs + 1);
+  int pressMs = max(static_cast<int>(lroundf(gaussianRandom(pressMeanMs, pressSigmaMs))), 0);
+
+  if (pressMs > totalMs - MIN_RELEASE_MS) {
+    pressMs = totalMs - MIN_RELEASE_MS;
   }
 
   rushCycleActive_ = true;
-  rushTapEndsUs_ = nowUs + tapUs;
-  rushCycleEndsUs_ = nowUs + totalCycleUs;
-  startTap();
-  adaptiveStep_ = AdaptiveStep::Press;
+  rushTapEndsUs_ = nowUs + static_cast<int64_t>(pressMs) * 1000;
+  rushCycleEndsUs_ = nowUs + static_cast<int64_t>(totalMs) * 1000;
+  if (pressMs > 0) {
+    startTap();
+    adaptiveStep_ = AdaptiveStep::Press;
+  } else {
+    releaseTap();
+    adaptiveStep_ = AdaptiveStep::Release;
+  }
 }
 
 float ClickController::randomUnit() const {
-  return static_cast<float>(random(0L, 10001L)) / 10000.0f;
+  return static_cast<float>(rand()) / RAND_MAX;
 }
 
 float ClickController::randomGaussian() const {
-  float sum = 0.0f;
-  for (int i = 0; i < 6; ++i) {
-    sum += randomUnit();
-  }
-  return (sum - 3.0f) * 1.41421356f;
+  return gaussianRandom(0.0f, 1.0f);
 }
 
 void ClickController::releaseTap() {

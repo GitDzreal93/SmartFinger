@@ -4,6 +4,23 @@
 
 #include "ClickTypes.h"
 
+// Phase A: burst period (first 5 seconds).
+#define BURST_DURATION_MS 5000
+#define BURST_CYCLE_MIN_MS 30
+#define BURST_CYCLE_MAX_MS 36
+#define BURST_PRESS_MEAN_MS 16
+#define BURST_PRESS_SIGMA_MS 2
+
+// Phase B: hold period (continues after 5 seconds).
+#define HOLD_CYCLE_MIN_MS 80
+#define HOLD_CYCLE_MAX_MS 100
+#define HOLD_PRESS_MEAN_MS 18
+#define HOLD_PRESS_SIGMA_MS 3
+
+// Shared rush safety limits.
+#define MIN_RELEASE_MS 12
+#define AUTO_STOP_MS 1200000
+
 namespace AppConfig {
 
 constexpr int kTapPin = 3;
@@ -31,11 +48,6 @@ constexpr long kAdaptiveMinReleaseUs = 12000L;
 constexpr float kAdaptiveLongPauseChance = 0.04f;
 constexpr float kAdaptiveCycleJitterStdUs = 2200.0f;
 constexpr float kAdaptiveTapJitterStdUs = 1800.0f;
-constexpr long kRushMinCycleUs = 30000L;
-constexpr long kRushMaxCycleUs = 36000L;
-constexpr long kRushMinTapUs = 14000L;
-constexpr long kRushMaxTapUs = 18000L;
-constexpr long kRushMinReleaseUs = 12000L;
 
 constexpr ClickProfile kClickProfiles[] = {
   {0, 0, 0},

@@ -10,6 +10,7 @@ import {
   formatTimeForCommand,
   normalizeDateTimeLocalToSecond,
   parseStateLine,
+  rushShortcutAction,
 } from "../control-model.mjs";
 
 assert.deepEqual(
@@ -33,6 +34,11 @@ assert.throws(() => buildImmediateStartCommands({ grade: 6 }), /1-5/);
 assert.equal(buildRushCommand("start"), "RUSH START");
 assert.equal(buildRushCommand("stop"), "RUSH STOP");
 assert.throws(() => buildRushCommand("pause"), /start or stop/);
+assert.equal(rushShortcutAction({ key: "F5", code: "F5", repeat: false }), "start");
+assert.equal(rushShortcutAction({ key: "F6", code: "F6", repeat: false }), "stop");
+assert.equal(rushShortcutAction({ key: "Unidentified", code: "F5", repeat: false }), "start");
+assert.equal(rushShortcutAction({ key: "F5", code: "F5", repeat: true }), null);
+assert.equal(rushShortcutAction({ key: "F9", code: "F9", repeat: false }), null);
 
 assert.deepEqual(
   buildScheduledStartCommands({
